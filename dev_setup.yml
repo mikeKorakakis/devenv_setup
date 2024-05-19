@@ -2,7 +2,14 @@
 - name: Setup Development Environment
   hosts: localhost
   become: yes
+  vars:
+    ansible_user: "{{ lookup('env', 'USER') }}"  # Dynamically set the user
+
   tasks:
+    - name: Show Ansible User
+      debug:
+        msg: "The current user is {{ ansible_user }}"
+
     - name: Update and upgrade apt packages
       apt:
         update_cache: yes
@@ -29,11 +36,6 @@
         nvm alias default 'lts/*'
         echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.zshrc
         echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.zshrc
-
-    - name: Install Yarn
-      npm:
-        name: yarn
-        state: present
 
     - name: Install Docker
       shell: curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh
@@ -65,29 +67,70 @@
         sudo apt-get update
         sudo apt-get install -y dotnet-sdk-8.0
 
-    - name: Install Stripe CLI
-      shell: |
-        curl -L https://stripe-cli.s3.amazonaws.com/install.sh | sudo bash
+    - name: Download Stripe CLI tar.gz
+      get_url:
+        url: https://github.com/stripe/stripe-cli/releases/download/v1.7.9/stripe_1.7.9_linux_x86_64.tar.gz
+        dest: /tmp/stripe.tar.gz
 
-    - name: Generate SSH key
-      user:
-        name: "{{ ansible_user_id }}"
-        generate_ssh_key: yes
-        ssh_key_bits: 2048
-        ssh_key_file: .ssh/id_rsa
+    - name: Extract Stripe CLI tar.gz
+      unarchive:
+        src: /tmp/stripe.tar.gz
+        dest: /tmp/
+        remote_src: yes
 
-    - name: Add SSH key to ssh-agent
-      shell: |
-        eval "$(ssh-agent -s)"
-        ssh-add ~/.ssh/id_rsa
+    - name: Move Stripe CLI to /usr/local/bin
+      command: mv /tmp/stripe /usr/local/bin/stripe
+
+    - name: Ensure Stripe CLI is executable
+      file:
+        path: /usr/local/bin/stripe
+        mode: '0755'
+
+    - name: Create .ssh directory if it does not exist
+      file:
+        path: "/home/{{ ansible_user }}/.ssh"
+        state: directory
+        mode: '0700'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Generate SSH key if it does not exist
+      become_user: "{{ ansible_user }}"
+      command: ssh-keygen -t rsa -b 4096 -f "/home/{{ ansible_user }}/.ssh/id_rsa" -q -N ""
+      args:
+        creates: "/home/{{ ansible_user }}/.ssh/id_rsa"
+
+    - name: Ensure SSH directory has correct permissions
+      file:
+        path: "/home/{{ ansible_user }}/.ssh"
+        state: directory
+        mode: '0700'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Ensure SSH key has correct permissions
+      file:
+        path: "/home/{{ ansible_user }}/.ssh/id_rsa"
+        state: file
+        mode: '0600'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Ensure SSH public key has correct permissions
+      file:
+        path: "/home/{{ ansible_user }}/.ssh/id_rsa.pub"
+        state: file
+        mode: '0644'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
 
     - name: Display SSH public key
-      command: cat ~/.ssh/id_rsa.pub
-      register: ssh_key
+      command: cat "/home/{{ ansible_user }}/.ssh/id_rsa.pub"
+      register: ssh_public_key
 
-    - name: Output SSH public key
+    - name: Show SSH public key
       debug:
-        msg: "Add the following SSH key to your GitHub account:\n{{ ssh_key.stdout }}"
+        msg: "{{ ssh_public_key.stdout }}"
 
     - name: Configure Git user name
       git_config:
