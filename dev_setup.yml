@@ -89,5 +89,17 @@
       debug:
         msg: "Add the following SSH key to your GitHub account:\n{{ ssh_key.stdout }}"
 
+    - name: Configure Git user name
+      git_config:
+        name: user.name
+        value: "Mike Korakakis"
+        scope: global
+
+    - name: Configure Git user email
+      git_config:
+        name: user.email
+        value: "mike.korakakis@gmail.com"
+        scope: global
+
     - name: Set up Zsh and Oh My Zsh
       shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
