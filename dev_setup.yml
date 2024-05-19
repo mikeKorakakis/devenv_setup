@@ -2,147 +2,160 @@
 - name: Setup Development Environment
   hosts: localhost
   become: yes
+  connection: local
   vars:
     ansible_user: "{{ lookup('env', 'USER') }}"  # Dynamically set the user
 
   tasks:
-    - name: Show Ansible User
-      debug:
-        msg: "The current user is {{ ansible_user }}"
+    # - name: Show Ansible User
+    #   debug:
+    #     msg: "The current user is {{ ansible_user }}"
 
-    - name: Update and upgrade apt packages
-      apt:
-        update_cache: yes
-        upgrade: dist
+    # - name: Update and upgrade apt packages
+    #   apt:
+    #     update_cache: yes
+    #     upgrade: dist
 
-    - name: Install essential packages
-      apt:
-        name:
-          - build-essential
-          - git
-          - curl
-          - wget
-          - zsh
-          - software-properties-common
-        state: present
+    # - name: Install essential packages
+    #   apt:
+    #     name:
+    #       - build-essential
+    #       - git
+    #       - curl
+    #       - wget
+    #       - zsh
+    #       - software-properties-common
+    #     state: present
 
-    - name: Install Node.js via NVM
-      shell: |
-        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-        export NVM_DIR="$HOME/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        nvm install --lts
-        nvm use --lts
-        nvm alias default 'lts/*'
-        echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.zshrc
-        echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.zshrc
+    # - name: Install Node.js via NVM
+    #   shell: |
+    #     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+    #     export NVM_DIR="$HOME/.nvm"
+    #     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    #     nvm install --lts
+    #     nvm use --lts
+    #     nvm alias default 'lts/*'
+    #     echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.zshrc
+    #     echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.zshrc
 
-    - name: Install Docker
-      shell: curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh
-    - name: Add user to docker group
-      user:
-        name: "{{ ansible_user_id }}"
-        groups: docker
-        append: yes
+    # - name: Install Docker
+    #   shell: curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh
+    # - name: Add user to docker group
+    #   user:
+    #     name: "{{ ansible_user_id }}"
+    #     groups: docker
+    #     append: yes
 
-    - name: Install Docker Compose
-      shell: |
-        sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
+    # - name: Install Docker Compose
+    #   shell: |
+    #     sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    #     sudo chmod +x /usr/local/bin/docker-compose
 
-    - name: Install Neovim
-      apt:
-        name: neovim
-        state: present
+    # - name: Install Neovim
+    #   apt:
+    #     name: neovim
+    #     state: present
 
-    - name: Install Go (Golang)
-      apt:
-        name: golang-go
-        state: present
+    # - name: Install Go (Golang)
+    #   apt:
+    #     name: golang-go
+    #     state: present
 
-    - name: Install .NET SDK
-      shell: |
-        wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-        sudo dpkg -i packages-microsoft-prod.deb
-        sudo apt-get update
-        sudo apt-get install -y dotnet-sdk-8.0
+    # - name: Install .NET SDK
+    #   shell: |
+    #     wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+    #     sudo dpkg -i packages-microsoft-prod.deb
+    #     sudo apt-get update
+    #     sudo apt-get install -y dotnet-sdk-8.0
 
-    - name: Download Stripe CLI tar.gz
-      get_url:
-        url: https://github.com/stripe/stripe-cli/releases/download/v1.7.9/stripe_1.7.9_linux_x86_64.tar.gz
-        dest: /tmp/stripe.tar.gz
+    # - name: Download Stripe CLI tar.gz
+    #   get_url:
+    #     url: https://github.com/stripe/stripe-cli/releases/download/v1.7.9/stripe_1.7.9_linux_x86_64.tar.gz
+    #     dest: /tmp/stripe.tar.gz
 
-    - name: Extract Stripe CLI tar.gz
-      unarchive:
-        src: /tmp/stripe.tar.gz
-        dest: /tmp/
-        remote_src: yes
+    # - name: Extract Stripe CLI tar.gz
+    #   unarchive:
+    #     src: /tmp/stripe.tar.gz
+    #     dest: /tmp/
+    #     remote_src: yes
 
-    - name: Move Stripe CLI to /usr/local/bin
-      command: mv /tmp/stripe /usr/local/bin/stripe
+    # - name: Move Stripe CLI to /usr/local/bin
+    #   command: mv /tmp/stripe /usr/local/bin/stripe
 
-    - name: Ensure Stripe CLI is executable
-      file:
-        path: /usr/local/bin/stripe
-        mode: '0755'
+    # - name: Ensure Stripe CLI is executable
+    #   file:
+    #     path: /usr/local/bin/stripe
+    #     mode: '0755'
 
-    - name: Create .ssh directory if it does not exist
-      file:
-        path: "/home/{{ ansible_user }}/.ssh"
-        state: directory
-        mode: '0700'
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+    # - name: Create .ssh directory if it does not exist
+    #   file:
+    #     path: "/home/{{ ansible_user }}/.ssh"
+    #     state: directory
+    #     mode: '0700'
+    #     owner: "{{ ansible_user }}"
+    #     group: "{{ ansible_user }}"
 
-    - name: Generate SSH key if it does not exist
-      become_user: "{{ ansible_user }}"
-      command: ssh-keygen -t rsa -b 4096 -f "/home/{{ ansible_user }}/.ssh/id_rsa" -q -N ""
-      args:
-        creates: "/home/{{ ansible_user }}/.ssh/id_rsa"
+    # - name: Generate SSH key if it does not exist
+    #   become_user: "{{ ansible_user }}"
+    #   command: ssh-keygen -t rsa -b 4096 -f "/home/{{ ansible_user }}/.ssh/id_rsa" -q -N ""
+    #   args:
+    #     creates: "/home/{{ ansible_user }}/.ssh/id_rsa"
 
-    - name: Ensure SSH directory has correct permissions
-      file:
-        path: "/home/{{ ansible_user }}/.ssh"
-        state: directory
-        mode: '0700'
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+    # - name: Ensure SSH directory has correct permissions
+    #   file:
+    #     path: "/home/{{ ansible_user }}/.ssh"
+    #     state: directory
+    #     mode: '0700'
+    #     owner: "{{ ansible_user }}"
+    #     group: "{{ ansible_user }}"
 
-    - name: Ensure SSH key has correct permissions
-      file:
-        path: "/home/{{ ansible_user }}/.ssh/id_rsa"
-        state: file
-        mode: '0600'
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+    # - name: Ensure SSH key has correct permissions
+    #   file:
+    #     path: "/home/{{ ansible_user }}/.ssh/id_rsa"
+    #     state: file
+    #     mode: '0600'
+    #     owner: "{{ ansible_user }}"
+    #     group: "{{ ansible_user }}"
 
-    - name: Ensure SSH public key has correct permissions
-      file:
-        path: "/home/{{ ansible_user }}/.ssh/id_rsa.pub"
-        state: file
-        mode: '0644'
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+    # - name: Ensure SSH public key has correct permissions
+    #   file:
+    #     path: "/home/{{ ansible_user }}/.ssh/id_rsa.pub"
+    #     state: file
+    #     mode: '0644'
+    #     owner: "{{ ansible_user }}"
+    #     group: "{{ ansible_user }}"
 
-    - name: Display SSH public key
-      command: cat "/home/{{ ansible_user }}/.ssh/id_rsa.pub"
-      register: ssh_public_key
+    # - name: Display SSH public key
+    #   command: cat "/home/{{ ansible_user }}/.ssh/id_rsa.pub"
+    #   register: ssh_public_key
 
-    - name: Show SSH public key
-      debug:
-        msg: "{{ ssh_public_key.stdout }}"
+    # - name: Show SSH public key
+    #   debug:
+    #     msg: "{{ ssh_public_key.stdout }}"
 
     - name: Configure Git user name
+      become_user: "{{ ansible_user }}"
       git_config:
         name: user.name
         value: "Mike Korakakis"
         scope: global
 
     - name: Configure Git user email
+      become_user: "{{ ansible_user }}"
       git_config:
         name: user.email
         value: "mike.korakakis@gmail.com"
         scope: global
 
-    - name: Set up Zsh and Oh My Zsh
-      shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    - name: Install Oh My Zsh
+      become: yes
+      become_user: "{{ ansible_user }}"
+      shell: >
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+      args:
+        creates: "/home/{{ ansible_user }}/.oh-my-zsh"
+
+    - name: Change default shell to Zsh
+      user:
+        name: "{{ ansible_user }}"
+        shell: /usr/bin/zsh

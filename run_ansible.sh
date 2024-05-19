@@ -11,4 +11,4 @@ then
 fi
 
 # Run the Ansible playbook
-ansible-playbook dev_setup.yml
+ansible-playbook -i localhost, dev_setup.yml
