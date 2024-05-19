@@ -5,133 +5,160 @@
   connection: local
   vars:
     ansible_user: "{{ lookup('env', 'USER') }}"  # Dynamically set the user
-
   tasks:
+
     # - name: Show Ansible User
     #   debug:
     #     msg: "The current user is {{ ansible_user }}"
 
-    # - name: Update and upgrade apt packages
-    #   apt:
-    #     update_cache: yes
-    #     upgrade: dist
+    - name: Update /etc/hostname
+      lineinfile:
+        path: /etc/hostname
+        line: "{{ ansible_user }}"
+        create: yes
 
-    # - name: Install essential packages
-    #   apt:
-    #     name:
-    #       - build-essential
-    #       - git
-    #       - curl
-    #       - wget
-    #       - zsh
-    #       - software-properties-common
-    #     state: present
+    - name: Update /etc/hosts to include new hostname
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127\\.0\\.1\\.1\\s+'
+        line: "127.0.1.1 {{ ansible_user }}"
+        create: yes
+        state: present
+        insertafter: EOF
 
-    # - name: Install Node.js via NVM
-    #   shell: |
-    #     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-    #     export NVM_DIR="$HOME/.nvm"
-    #     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    #     nvm install --lts
-    #     nvm use --lts
-    #     nvm alias default 'lts/*'
-    #     echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.zshrc
-    #     echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.zshrc
+    - name: Update /etc/hosts to include localhost entry for new hostname
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127\\.0\\.0\\.1\\s+'
+        line: "127.0.0.1 localhost {{ ansible_user }}"
+        create: yes
+        state: present
+        insertafter: BOF
 
-    # - name: Install Docker
-    #   shell: curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh
-    # - name: Add user to docker group
-    #   user:
-    #     name: "{{ ansible_user_id }}"
-    #     groups: docker
-    #     append: yes
+    - name: Set the hostname for the current session
+      shell: hostname {{ ansible_user }}
 
-    # - name: Install Docker Compose
-    #   shell: |
-    #     sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    #     sudo chmod +x /usr/local/bin/docker-compose
+    - name: Update and upgrade apt packages
+      apt:
+        update_cache: yes
+        upgrade: dist
 
-    # - name: Install Neovim
-    #   apt:
-    #     name: neovim
-    #     state: present
+    - name: Install essential packages
+      apt:
+        name:
+          - build-essential
+          - git
+          - curl
+          - wget
+          - zsh
+          - software-properties-common
+        state: present
 
-    # - name: Install Go (Golang)
-    #   apt:
-    #     name: golang-go
-    #     state: present
+    - name: Install Node.js via NVM
+      shell: |
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install --lts
+        nvm use --lts
+        nvm alias default 'lts/*'
+        echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.zshrc
+        echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.zshrc
 
-    # - name: Install .NET SDK
-    #   shell: |
-    #     wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-    #     sudo dpkg -i packages-microsoft-prod.deb
-    #     sudo apt-get update
-    #     sudo apt-get install -y dotnet-sdk-8.0
+    - name: Install Docker
+      shell: curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: yes
 
-    # - name: Download Stripe CLI tar.gz
-    #   get_url:
-    #     url: https://github.com/stripe/stripe-cli/releases/download/v1.7.9/stripe_1.7.9_linux_x86_64.tar.gz
-    #     dest: /tmp/stripe.tar.gz
+    - name: Install Docker Compose
+      shell: |
+        sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
 
-    # - name: Extract Stripe CLI tar.gz
-    #   unarchive:
-    #     src: /tmp/stripe.tar.gz
-    #     dest: /tmp/
-    #     remote_src: yes
+    - name: Install Neovim
+      apt:
+        name: neovim
+        state: present
 
-    # - name: Move Stripe CLI to /usr/local/bin
-    #   command: mv /tmp/stripe /usr/local/bin/stripe
+    - name: Install Go (Golang)
+      apt:
+        name: golang-go
+        state: present
 
-    # - name: Ensure Stripe CLI is executable
-    #   file:
-    #     path: /usr/local/bin/stripe
-    #     mode: '0755'
+    - name: Install .NET SDK
+      shell: |
+        wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+        sudo dpkg -i packages-microsoft-prod.deb
+        sudo apt-get update
+        sudo apt-get install -y dotnet-sdk-8.0
 
-    # - name: Create .ssh directory if it does not exist
-    #   file:
-    #     path: "/home/{{ ansible_user }}/.ssh"
-    #     state: directory
-    #     mode: '0700'
-    #     owner: "{{ ansible_user }}"
-    #     group: "{{ ansible_user }}"
+    - name: Download Stripe CLI tar.gz
+      get_url:
+        url: https://github.com/stripe/stripe-cli/releases/download/v1.7.9/stripe_1.7.9_linux_x86_64.tar.gz
+        dest: /tmp/stripe.tar.gz
 
-    # - name: Generate SSH key if it does not exist
-    #   become_user: "{{ ansible_user }}"
-    #   command: ssh-keygen -t rsa -b 4096 -f "/home/{{ ansible_user }}/.ssh/id_rsa" -q -N ""
-    #   args:
-    #     creates: "/home/{{ ansible_user }}/.ssh/id_rsa"
+    - name: Extract Stripe CLI tar.gz
+      unarchive:
+        src: /tmp/stripe.tar.gz
+        dest: /tmp/
+        remote_src: yes
 
-    # - name: Ensure SSH directory has correct permissions
-    #   file:
-    #     path: "/home/{{ ansible_user }}/.ssh"
-    #     state: directory
-    #     mode: '0700'
-    #     owner: "{{ ansible_user }}"
-    #     group: "{{ ansible_user }}"
+    - name: Move Stripe CLI to /usr/local/bin
+      command: mv /tmp/stripe /usr/local/bin/stripe
 
-    # - name: Ensure SSH key has correct permissions
-    #   file:
-    #     path: "/home/{{ ansible_user }}/.ssh/id_rsa"
-    #     state: file
-    #     mode: '0600'
-    #     owner: "{{ ansible_user }}"
-    #     group: "{{ ansible_user }}"
+    - name: Ensure Stripe CLI is executable
+      file:
+        path: /usr/local/bin/stripe
+        mode: '0755'
 
-    # - name: Ensure SSH public key has correct permissions
-    #   file:
-    #     path: "/home/{{ ansible_user }}/.ssh/id_rsa.pub"
-    #     state: file
-    #     mode: '0644'
-    #     owner: "{{ ansible_user }}"
-    #     group: "{{ ansible_user }}"
+    - name: Create .ssh directory if it does not exist
+      file:
+        path: "/home/{{ ansible_user }}/.ssh"
+        state: directory
+        mode: '0700'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
 
-    # - name: Display SSH public key
-    #   command: cat "/home/{{ ansible_user }}/.ssh/id_rsa.pub"
-    #   register: ssh_public_key
+    - name: Generate SSH key if it does not exist
+      become_user: "{{ ansible_user }}"
+      command: ssh-keygen -t rsa -b 4096 -f "/home/{{ ansible_user }}/.ssh/id_rsa" -q -N ""
+      args:
+        creates: "/home/{{ ansible_user }}/.ssh/id_rsa"
 
-    # - name: Show SSH public key
-    #   debug:
-    #     msg: "{{ ssh_public_key.stdout }}"
+    - name: Ensure SSH directory has correct permissions
+      file:
+        path: "/home/{{ ansible_user }}/.ssh"
+        state: directory
+        mode: '0700'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Ensure SSH key has correct permissions
+      file:
+        path: "/home/{{ ansible_user }}/.ssh/id_rsa"
+        state: file
+        mode: '0600'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Ensure SSH public key has correct permissions
+      file:
+        path: "/home/{{ ansible_user }}/.ssh/id_rsa.pub"
+        state: file
+        mode: '0644'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Display SSH public key
+      command: cat "/home/{{ ansible_user }}/.ssh/id_rsa.pub"
+      register: ssh_public_key
+
+    - name: Show SSH public key
+      debug:
+        msg: "{{ ssh_public_key.stdout }}"
 
     - name: Configure Git user name
       become_user: "{{ ansible_user }}"
@@ -159,3 +186,54 @@
       user:
         name: "{{ ansible_user }}"
         shell: /usr/bin/zsh
+   
+ 
+    - name: install dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - software-properties-common
+        state: latest
+        update_cache: yes
+    - name: GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    - name: repository docker
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+    - name: install docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: latest
+        update_cache: yes
+    - name: adding users to group docker
+      user:
+        name: '{{ item }}'
+        groups: docker
+        append: yes
+      loop:
+        - '{{ ansible_user }}'
+
+    - name: Get latest Docker Compose release info
+      uri:
+        url: https://api.github.com/repos/docker/compose/releases/latest
+        return_content: yes
+      register: latest_compose_release
+
+    - name: Set Docker Compose download URL
+      set_fact:
+        docker_compose_url: "{{ latest_compose_release.json.assets | selectattr('name', 'search', 'docker-compose-Linux-x86_64$') | first | map(attribute='browser_download_url') | first }}"
+
+    - name: Install Docker Compose
+      get_url:
+        url: "{{ docker_compose_url }}"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
