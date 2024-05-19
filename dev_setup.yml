@@ -1,0 +1,93 @@
+---
+- name: Setup Development Environment
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Update and upgrade apt packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install essential packages
+      apt:
+        name:
+          - build-essential
+          - git
+          - curl
+          - wget
+          - zsh
+          - software-properties-common
+        state: present
+
+    - name: Install Node.js via NVM
+      shell: |
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install --lts
+        nvm use --lts
+        nvm alias default 'lts/*'
+        echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.zshrc
+        echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.zshrc
+
+    - name: Install Yarn
+      npm:
+        name: yarn
+        state: present
+
+    - name: Install Docker
+      shell: curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: yes
+
+    - name: Install Docker Compose
+      shell: |
+        sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+
+    - name: Install Neovim
+      apt:
+        name: neovim
+        state: present
+
+    - name: Install Go (Golang)
+      apt:
+        name: golang-go
+        state: present
+
+    - name: Install .NET SDK
+      shell: |
+        wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+        sudo dpkg -i packages-microsoft-prod.deb
+        sudo apt-get update
+        sudo apt-get install -y dotnet-sdk-8.0
+
+    - name: Install Stripe CLI
+      shell: |
+        curl -L https://stripe-cli.s3.amazonaws.com/install.sh | sudo bash
+
+    - name: Generate SSH key
+      user:
+        name: "{{ ansible_user_id }}"
+        generate_ssh_key: yes
+        ssh_key_bits: 2048
+        ssh_key_file: .ssh/id_rsa
+
+    - name: Add SSH key to ssh-agent
+      shell: |
+        eval "$(ssh-agent -s)"
+        ssh-add ~/.ssh/id_rsa
+
+    - name: Display SSH public key
+      command: cat ~/.ssh/id_rsa.pub
+      register: ssh_key
+
+    - name: Output SSH public key
+      debug:
+        msg: "Add the following SSH key to your GitHub account:\n{{ ssh_key.stdout }}"
+
+    - name: Set up Zsh and Oh My Zsh
+      shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
