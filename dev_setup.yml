@@ -8,9 +8,9 @@
     NODEJS_VERSION: "20"
   tasks:
 
-    # - name: Show Ansible User
-    #   debug:
-    #     msg: "The current user is {{ ansible_user }}"
+    - name: Show Ansible User
+      debug:
+        msg: "The current user is {{ ansible_user }}"
 
     - name: Ensure /etc/wsl.conf exists
       file:
@@ -22,15 +22,10 @@
         path: /etc/wsl.conf
         block: |
           [network]
-          hostname = "{{ lookup('env', 'USER') }}"
+          hostname ={{ lookup('env', 'USER') }}
 
           [boot]
-          systemd = true
-
-    - name: Restart WSL to apply changes
-      shell: |
-        wsl --shutdown
-      ignore_errors: yes
+          systemd=true
 
     - name: Update /etc/hostname
       lineinfile:
@@ -254,17 +249,22 @@
           - containerd.io
         state: latest
 
+    - name: Ensure docker group exists
+      group:
+        name: docker
+        state: present
+
     - name: Add user to Docker group
       user:
-        name: "{{ lookup('env', 'USER') }}"
+        name: "{{ ansible_user }}"
         groups: docker
         append: yes
 
-    - name: Get latest Docker Compose release info
-      uri:
-        url: https://api.github.com/repos/docker/compose/releases/latest
-        return_content: yes
-      register: latest_compose_release
+    # - name: Get latest Docker Compose release info
+    #   uri:
+    #     url: https://api.github.com/repos/docker/compose/releases/latest
+    #     return_content: yes
+    #   register: latest_compose_release
 
     - name: Get latest Docker Compose release info
       uri:
@@ -304,3 +304,9 @@
     - name: Show Docker Compose version
       debug:
         msg: "{{ docker_compose_version.stdout }}"
+
+    - name: Shut down WSL to apply all changes
+      shell: |
+        wsl --shutdown
+      ignore_errors: yes
+

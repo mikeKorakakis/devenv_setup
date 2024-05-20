@@ -12,3 +12,6 @@ fi
 
 # Run the Ansible playbook
 ansible-playbook -i localhost, dev_setup.yml
+
+# Reboot
+sudo reboot now
