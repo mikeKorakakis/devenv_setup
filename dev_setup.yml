@@ -5,11 +5,32 @@
   connection: local
   vars:
     ansible_user: "{{ lookup('env', 'USER') }}"  # Dynamically set the user
+    NODEJS_VERSION: "20"
   tasks:
 
     # - name: Show Ansible User
     #   debug:
     #     msg: "The current user is {{ ansible_user }}"
+
+    - name: Ensure /etc/wsl.conf exists
+      file:
+        path: /etc/wsl.conf
+        state: touch
+
+    - name: Configure WSL to use a specific hostname and enable systemd
+      blockinfile:
+        path: /etc/wsl.conf
+        block: |
+          [network]
+          hostname = "{{ lookup('env', 'USER') }}"
+
+          [boot]
+          systemd = true
+
+    - name: Restart WSL to apply changes
+      shell: |
+        wsl --shutdown
+      ignore_errors: yes
 
     - name: Update /etc/hostname
       lineinfile:
@@ -54,29 +75,21 @@
           - software-properties-common
         state: present
 
-    - name: Install Node.js via NVM
-      shell: |
-        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-        export NVM_DIR="$HOME/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        nvm install --lts
-        nvm use --lts
-        nvm alias default 'lts/*'
-        echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.zshrc
-        echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.zshrc
+    - name: Install the gpg key for nodejs LTS
+      apt_key:
+        url: "https://deb.nodesource.com/gpgkey/nodesource.gpg.key"
+        state: present
+    
+    - name: Install the nodejs LTS repos
+      apt_repository:
+        repo: "deb https://deb.nodesource.com/node_{{ NODEJS_VERSION }}.x {{ ansible_distribution_release }} main"
+        state: present
+        update_cache: yes
 
-    - name: Install Docker
-      shell: curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh
-    - name: Add user to docker group
-      user:
-        name: "{{ ansible_user_id }}"
-        groups: docker
-        append: yes
-
-    - name: Install Docker Compose
-      shell: |
-        sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
+    - name: Install the nodejs
+      apt:
+        name: nodejs
+        state: present
 
     - name: Install Neovim
       apt:
@@ -188,7 +201,7 @@
         shell: /usr/bin/zsh
    
  
-    - name: install dependencies
+    - name: Install dependencies
       apt:
         name:
           - apt-transport-https
@@ -198,29 +211,54 @@
           - software-properties-common
         state: latest
         update_cache: yes
-    - name: GPG key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-    - name: repository docker
-      apt_repository:
-        repo: deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
-        state: present
-    - name: install docker
+
+    - name: Remove existing Docker repository files
+      shell: |
+        rm -f /etc/apt/sources.list.d/docker.list
+        rm -f /etc/apt/sources.list.d/docker-ce.list
+        rm -f /etc/apt/keyrings/docker.asc
+        rm -f /etc/apt/keyrings/docker.gpg
+        rm -f sources.list.d/docker.list.list 
+        rm -f sources.list.d/download_docker_com_linux_ubuntu.list
+        sed -i '/download.docker.com/d' /etc/apt/sources.list
+      ignore_errors: yes
+
+    - name: Remove existing Docker keys
+      shell: |
+        apt-key del 9DC858229FC7DD38854AE2D88D81803C0EBFCD88 || true
+        apt-key del 0EBFCD88 || true
+      ignore_errors: yes
+
+    - name: Ensure Docker GPG key directory exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+
+    - name: Add Docker GPG key
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Docker
       apt:
         name:
           - docker-ce
           - docker-ce-cli
           - containerd.io
         state: latest
-        update_cache: yes
-    - name: adding users to group docker
+
+    - name: Add user to Docker group
       user:
-        name: '{{ item }}'
+        name: "{{ lookup('env', 'USER') }}"
         groups: docker
         append: yes
-      loop:
-        - '{{ ansible_user }}'
 
     - name: Get latest Docker Compose release info
       uri:
@@ -228,12 +266,41 @@
         return_content: yes
       register: latest_compose_release
 
+    - name: Get latest Docker Compose release info
+      uri:
+        url: https://api.github.com/repos/docker/compose/releases/latest
+        return_content: yes
+      register: latest_compose_release
+      failed_when: latest_compose_release.status != 200
+
+    - name: Debug latest Docker Compose release info
+      debug:
+        var: latest_compose_release.json
+
     - name: Set Docker Compose download URL
       set_fact:
-        docker_compose_url: "{{ latest_compose_release.json.assets | selectattr('name', 'search', 'docker-compose-Linux-x86_64$') | first | map(attribute='browser_download_url') | first }}"
+        docker_compose_url: "{{ latest_compose_release.json.assets | selectattr('name', 'search', 'docker-compose-linux-x86_64$') | map(attribute='browser_download_url') | first }}"
+      when: latest_compose_release.json.assets | selectattr('name', 'search', 'docker-compose-linux-x86_64$') | list | length > 0
+
+    - name: Fallback Docker Compose download URL
+      set_fact:
+        docker_compose_url: "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-Linux-x86_64"
+      when: docker_compose_url is not defined
+
+    - name: Debug Docker Compose download URL
+      debug:
+        msg: "Docker Compose will be downloaded from {{ docker_compose_url }}"
 
     - name: Install Docker Compose
       get_url:
         url: "{{ docker_compose_url }}"
         dest: /usr/local/bin/docker-compose
         mode: '0755'
+
+    - name: Verify Docker Compose installation
+      command: docker-compose --version
+      register: docker_compose_version
+
+    - name: Show Docker Compose version
+      debug:
+        msg: "{{ docker_compose_version.stdout }}"
